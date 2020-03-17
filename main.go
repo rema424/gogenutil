@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"gogenutil/gogenutil"
 	"log"
 
@@ -34,6 +35,12 @@ func run(path string) error {
 
 	for _, pkg := range pkgs {
 		gogenutil.PrintPackage(pkg)
+		files := gogenutil.Files(pkg)
+		for _, f := range files {
+			// f.Print(os.Stdout)
+			// fmt.Println(f.NodeByOffset(38))
+			fmt.Println(f.NodeByOffset(225))
+		}
 		// for _, astFile := range pkg.Syntax {
 		// 	// pp.Println("astFile", astFile)
 		// 	// fmt.Println("astFile", astFile)

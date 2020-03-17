@@ -2,10 +2,14 @@ package gogenutil
 
 import (
 	"fmt"
+	"go/ast"
 	"go/token"
+	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/k0kubun/pp"
+	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/xerrors"
 )
@@ -86,6 +90,52 @@ func PrintPackage(pkg *packages.Package) {
 		fmt.Println("===================================================================")
 	}
 	// fmt.Printf("pkg.Fset\t %#v\n", pkg.Fset.)
+}
+
+type File struct {
+	Name      string
+	Pkg       string
+	PkgPath   string
+	AstFile   *ast.File
+	TokenFile *token.File
+}
+
+func Files(pkg *packages.Package) map[string]*File {
+	tokenFileSet := pkg.Fset
+
+	files := make(map[string]*File, len(pkg.GoFiles))
+	for _, astFile := range pkg.Syntax {
+		tokenFile := tokenFileSet.File(astFile.Pos())
+		files[tokenFile.Name()] = &File{
+			Name:      tokenFile.Name(),
+			Pkg:       pkg.Name,
+			PkgPath:   pkg.PkgPath,
+			AstFile:   astFile,
+			TokenFile: tokenFile,
+		}
+	}
+	return files
+}
+
+func (f *File) Print(w io.Writer) {
+	fmt.Println("===================================================================")
+	fmt.Fprintf(w, "*File.Name\t%s\n", f.Name)
+	fmt.Fprintf(w, "*File.Pkg\t%s\n", f.Pkg)
+	fmt.Fprintf(w, "*File.PkgPath\t%s\n", f.PkgPath)
+	fmt.Fprintf(w, "*File.AstFile\t%+v\n", f.AstFile)
+	fmt.Fprintf(w, "*File.TokenFile\t%+v\n", f.TokenFile)
+	fmt.Println("===================================================================")
+}
+
+func (f *File) NodeByOffset(offset int) (*ast.Node, token.Pos, error) {
+	if offset > f.TokenFile.Size() {
+		return nil, 0, fmt.Errorf("file size (%d) is smaller than given offset (%d)", f.TokenFile.Size(), offset)
+	}
+
+	tokenPos := f.TokenFile.Pos(offset)
+	path, e := astutil.PathEnclosingInterval(f.AstFile, tokenPos, tokenPos)
+	pp.Println(len(path), path, e)
+	return nil, f.TokenFile.Pos(offset), nil
 }
 
 // func PrintPackages(pkgs []*packages.Package) {
